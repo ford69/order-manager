@@ -9,7 +9,9 @@ export interface Order {
   size: string;
   fitType: string;
   color: string;
+  quantity: number;
   price: number;
+  total?: number;
 }
 
 export type FormErrors = {

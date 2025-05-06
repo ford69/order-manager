@@ -60,6 +60,7 @@ function App() {
           size: order.size || '',
           fitType: order.fit_type || '',
           color: order.color || '',
+          quantity: Number(order.quantity) || 1, 
           price: Number(order.price)
         }));
         setOrders(formattedOrders);
@@ -86,6 +87,7 @@ function App() {
           size: newOrder.size,
           fit_type: newOrder.fitType,
           color: newOrder.color,
+          quantity: newOrder.quantity, 
           price: newOrder.price,
           user_id: session?.user.id
         });

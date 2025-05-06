@@ -19,11 +19,12 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
     const orderDate = new Date(order.date);
     const afterStartDate = !filters.startDate || orderDate >= new Date(filters.startDate);
     const beforeEndDate = !filters.endDate || orderDate <= new Date(filters.endDate);
-    
+
     return matchesId && afterStartDate && beforeEndDate;
   });
 
-  const totalValue = filteredOrders.reduce((sum, order) => sum + order.price, 0);
+  const totalValue = filteredOrders.reduce((sum, order) => sum + order.price * order.quantity, 0);
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -33,39 +34,49 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
   };
 
   const exportToCSV = () => {
-    const csvContent = [
-      ['Order ID', 'Date', 'Customer Name', 'Email', 'Phone', 'Product Name', 'Product Code', 'Size', 'Fit Type', 'Color', 'Price'],
-      ...filteredOrders.map(order => [
-        order.id,
-        order.date,
-        order.customerName,
-        order.email,
-        order.phone,
-        order.productName,
-        order.productCode,
-        order.size,
-        order.fitType,
-        order.color,
-        formatCurrency(order.price)
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  };
-
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      filteredOrders.map(order => ({
-        ...order,
-        price: formatCurrency(order.price)
-      }))
-    );
+    const rows = filteredOrders.map(order => ({
+      'Order ID': order.id,
+      Date: order.date,
+      'Customer Name': order.customerName,
+      Email: order.email,
+      Phone: order.phone,
+      'Product Name': order.productName,
+      'Product Code': order.productCode,
+      Size: order.size,
+      'Fit Type': order.fitType,
+      Color: order.color,
+      Qty: order.quantity,
+      Price: formatCurrency(order.price),
+      'Total Price': `"${formatCurrency(order.price * order.quantity)}"` // Wrap in quotes
+    }));
+  
+    const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+    XLSX.writeFile(workbook, `orders_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  
+
+  const exportToExcel = () => {
+    const formattedData = filteredOrders.map(order => ({
+      'Order ID': order.id,
+      'Date': new Date(order.date).toLocaleDateString(),
+      'Customer Name': order.customerName,
+      'Email': order.email,
+      'Phone': order.phone,
+      'Product Name': order.productName,
+      'Product Code': order.productCode,
+      'Size': order.size,
+      'Fit Type': order.fitType,
+      'Color': order.color,
+      'Quantity': order.quantity,
+      'Price': order.price,
+    }));
+  
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+  
     XLSX.writeFile(workbook, `orders_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
@@ -97,7 +108,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
               Start Date
@@ -110,7 +121,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black focus:ring-1 sm:text-sm"
             />
           </div>
-          
+
           <div>
             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
               End Date
@@ -123,7 +134,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-black focus:ring-black focus:ring-1 sm:text-sm"
             />
           </div>
-          
+
           <div className="flex space-x-2">
             <button
               onClick={exportToCSV}
@@ -151,7 +162,7 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
           </p>
         </div>
       </div>
-      
+
       <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-300">
@@ -167,12 +178,15 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Size</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Fit</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Color</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Qty</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Price</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total Price</th>
+
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
               {filteredOrders.map((order, index) => (
-                <tr 
+                <tr
                   key={`${order.id}-${index}`}
                   className="animate-fade-in"
                 >
@@ -188,9 +202,9 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     <span className="inline-flex items-center">
                       {order.color && (
-                        <span 
-                          className="mr-2 h-3 w-3 rounded-full" 
-                          style={{ 
+                        <span
+                          className="mr-2 h-3 w-3 rounded-full"
+                          style={{
                             backgroundColor: order.color.toLowerCase(),
                             display: /^#([0-9A-F]{3}){1,2}$/i.test(order.color) ? 'inline-block' : 'none'
                           }}
@@ -199,8 +213,12 @@ const OrderTable: React.FC<OrderTableProps> = ({ orders }) => {
                       {order.color}
                     </span>
                   </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{order.quantity}</td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {formatCurrency(order.price)}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                    {formatCurrency(order.price * order.quantity)}
                   </td>
                 </tr>
               ))}
